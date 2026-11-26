@@ -13,7 +13,7 @@ paleta curta magenta/roxo/azul com destaques laranja/amarelo, e dither em xadrez
 5. Amplia com vizinho mais próximo.
 
 ## Uso
-- Navegador: abra `index.html`, arraste a foto, ajuste e baixe o PNG.
+- Navegador: abra `index.html`, arraste a foto, ajuste e baixe o PNG. No iPhone, o botão **Salvar** abre a folha de compartilhar; escolha "Salvar Imagem" para ir ao rolo de fotos.
 - Linha de comando (precisa de `pillow` e `numpy`; no macOS o comando é `python3`).
   Uma vez, crie um ambiente com as dependências:
 
