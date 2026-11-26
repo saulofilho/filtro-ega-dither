@@ -14,10 +14,18 @@ paleta curta magenta/roxo/azul com destaques laranja/amarelo, e dither em xadrez
 
 ## Uso
 - Navegador: abra `index.html`, arraste a foto, ajuste e baixe o PNG.
-- Linha de comando (precisa de `pillow` e `numpy`):
+- Linha de comando (precisa de `pillow` e `numpy`; no macOS o comando é `python3`).
+  Uma vez, crie um ambiente com as dependências:
 
 ```
-python ega_dither.py foto.jpg saida.png --cols 320 --warm 0.6
+python3 -m venv .venv
+.venv/bin/pip install pillow numpy
+```
+
+  Depois, troque `foto.jpg` pelo caminho de uma foto sua:
+
+```
+.venv/bin/python ega_dither.py foto.jpg saida.png --cols 320 --warm 0.6
 ```
 
 Opções: `--cols` (grão), `--scale`, `--grade` (0 = cores originais, 1 = paleta total),
