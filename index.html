@@ -3,182 +3,367 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Filtro EGA Dither</title>
+<title>EGA Dither</title>
+<meta name="description" content="Transforme fotos em arte de PC dos anos 80: paletas curtas, dither e pixels altos. Roda no navegador.">
 <style>
-  :root { --bg:#14001a; --fg:#ffd0ff; --accent:#ff10ff; --muted:#9a00b8; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 ui-monospace,Menlo,monospace; }
-  header { padding:16px; border-bottom:2px solid var(--muted); }
-  h1 { margin:0; font-size:18px; color:var(--accent); letter-spacing:2px; }
-  main { display:grid; grid-template-columns:300px 1fr; gap:16px; padding:16px; }
-  @media (max-width:760px){ main{ grid-template-columns:1fr; } }
-  #drop { border:2px dashed var(--muted); padding:24px 12px; text-align:center; cursor:pointer; }
-  #drop.over { border-color:var(--accent); background:#2a0030; }
-  h2 { font-size:12px; letter-spacing:2px; color:var(--accent); margin:20px 0 0; border-top:1px solid var(--muted); padding-top:10px; }
-  label { display:block; margin-top:10px; }
-  label span { float:right; color:#fff; }
-  input[type=range] { width:100%; accent-color:var(--accent); }
-  select { width:100%; margin-top:4px; background:#2a0030; color:#fff; border:1px solid var(--muted); font:inherit; padding:4px; }
-  button { margin-top:16px; width:100%; padding:10px; background:var(--accent); color:#000; border:0; font:inherit; font-weight:bold; cursor:pointer; }
-  button.ghost { background:transparent; color:var(--fg); border:1px solid var(--muted); margin-top:8px; }
-  button:disabled { opacity:.4; cursor:default; }
-  #view { overflow:auto; min-height:300px; display:flex; align-items:flex-start; justify-content:center; }
-  canvas { image-rendering:pixelated; max-width:100%; height:auto; }
-  .hint { color:#b080c0; font-size:12px; margin-top:8px; }
-  #status { color:#b080c0; font-size:12px; min-height:1.4em; }
+  :root {
+    --bg: #f6f6f5; --panel: #ffffff; --stage: #ececea; --line: #e3e3e0; --line-strong: #d4d4d0;
+    --fg: #17171a; --fg-2: #5c5c63; --fg-3: #8e8e95; --accent: #17171a; --on-accent: #ffffff;
+    --hover: #f1f1ef; --track: #dcdcd8; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+    --radius: 10px; color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111113; --panel: #18181b; --stage: #0b0b0c; --line: #26262a; --line-strong: #34343a;
+      --fg: #ededef; --fg-2: #a1a1a8; --fg-3: #6e6e76; --accent: #ededef; --on-accent: #111113;
+      --hover: #202024; --track: #2e2e33; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; display: grid; grid-template-rows: 56px 1fr;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  /* barra superior */
+  .top { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; font-size: 14px; white-space: nowrap; }
+  .logo { width: 20px; height: 20px; border-radius: 5px; background:
+    conic-gradient(from 90deg, var(--fg) 0 25%, transparent 0 50%, var(--fg) 0 75%, transparent 0) 0 0/10px 10px;
+    box-shadow: inset 0 0 0 1px var(--fg); }
+  .brand small { font-weight: 400; color: var(--fg-3); font-size: 12px; }
+  .spacer { flex: 1; }
+  .btn {
+    height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel);
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s;
+  }
+  .btn:hover:not(:disabled) { background: var(--hover); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 500; }
+  .btn.primary:hover:not(:disabled) { opacity: .88; background: var(--accent); }
+  .btn svg { width: 15px; height: 15px; }
+  .icon-only { width: 32px; padding: 0; justify-content: center; }
+  a.btn { text-decoration: none; }
+
+  /* layout */
+  .app { display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
+  aside { border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; min-height: 0; }
+  .section { padding: 16px; border-bottom: 1px solid var(--line); }
+  .section > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-2); user-select: none;
+  }
+  .section > summary::-webkit-details-marker { display: none; }
+  .section > summary::after { content: ""; width: 7px; height: 7px; border-right: 1.5px solid var(--fg-3); border-bottom: 1.5px solid var(--fg-3); transform: rotate(45deg); transition: transform .2s; margin-right: 3px; }
+  .section:not([open]) > summary::after { transform: rotate(-45deg); }
+  .section[open] > summary { margin-bottom: 14px; }
+
+  /* paletas */
+  .palettes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pal { position: relative; cursor: pointer; }
+  .pal input { position: absolute; opacity: 0; pointer-events: none; }
+  .pal .card { display: block; border: 1px solid var(--line); border-radius: 8px; padding: 6px; transition: border-color .15s, box-shadow .15s; }
+  .pal:hover .card { border-color: var(--line-strong); }
+  .pal input:checked + .card { border-color: var(--fg); box-shadow: 0 0 0 1px var(--fg); }
+  .pal input:focus-visible + .card { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .strip { display: flex; height: 18px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+  .strip i { flex: 1; }
+  .pal .name { display: block; margin-top: 6px; font-size: 12px; color: var(--fg-2); }
+  .pal input:checked + .card .name { color: var(--fg); font-weight: 500; }
+
+  /* controles segmentados */
+  .field + .field { margin-top: 14px; }
+  .field-label { font-size: 12px; color: var(--fg-2); margin-bottom: 6px; display: block; }
+  .seg { display: grid; gap: 2px; padding: 2px; background: var(--hover); border: 1px solid var(--line); border-radius: 8px; }
+  .seg.c2 { grid-template-columns: 1fr 1fr; } .seg.c3 { grid-template-columns: repeat(3, 1fr); }
+  .seg label { position: relative; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span { display: block; text-align: center; padding: 6px 4px; border-radius: 6px; cursor: pointer; color: var(--fg-2); font-size: 12px; transition: background .15s, color .15s; }
+  .seg span:hover { color: var(--fg); }
+  .seg input:checked + span { background: var(--panel); color: var(--fg); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--line); }
+  .seg input:focus-visible + span { outline: 2px solid var(--fg); }
+
+  /* sliders */
+  .slider + .slider { margin-top: 12px; }
+  .slider .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .slider .row span { color: var(--fg-2); font-size: 12px; }
+  .slider output { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--fg); min-width: 3ch; text-align: right; }
+  .slider.changed .row span { color: var(--fg); }
+  .slider.changed .row span::after { content: " •"; color: var(--fg-3); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; margin: 0; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(var(--fg), var(--fg)) 0/var(--p, 50%) 100% no-repeat, var(--track); }
+  input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: var(--track); }
+  input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--fg); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 1.5px solid var(--fg); margin-top: -5px; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--panel); border: 1.5px solid var(--fg); }
+  .side-foot { padding: 16px; display: flex; gap: 8px; align-items: center; justify-content: space-between; color: var(--fg-3); font-size: 12px; }
+  .link { background: none; border: 0; padding: 0; color: var(--fg-2); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  .link:hover { color: var(--fg); }
+
+  /* palco */
+  main { position: relative; min-height: 0; min-width: 0; display: grid; grid-template-rows: 1fr auto; background: var(--stage); }
+  .canvas-wrap { position: relative; overflow: auto; display: grid; place-items: center; padding: 32px; min-height: 0; }
+  .canvas-wrap.fit canvas { max-width: 100%; max-height: calc(100vh - 56px - 44px - 64px); width: auto; height: auto; }
+  canvas { image-rendering: pixelated; display: block; border-radius: 4px; box-shadow: var(--shadow); }
+  #orig { position: absolute; inset: 0; margin: auto; pointer-events: none; opacity: 0; transition: opacity .12s; }
+  .stack { position: relative; display: grid; }
+  .stack > * { grid-area: 1 / 1; }
+  .stack img { width: 100%; height: 100%; object-fit: fill; border-radius: 4px; opacity: 0; transition: opacity .12s; pointer-events: none; }
+  .comparing .stack img { opacity: 1; }
+  .badge { position: absolute; top: 10px; left: 10px; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; opacity: 0; transition: opacity .12s; pointer-events: none; }
+  .comparing .badge { opacity: 1; }
+
+  .empty { position: absolute; inset: 24px; display: grid; place-items: center; border: 1.5px dashed var(--line-strong); border-radius: 14px; cursor: pointer; transition: border-color .15s, background .15s; text-align: center; }
+  .empty:hover, body.dragging .empty { border-color: var(--fg-3); background: color-mix(in srgb, var(--panel) 40%, transparent); }
+  .empty .inner { max-width: 320px; padding: 24px; }
+  .empty svg { width: 36px; height: 36px; color: var(--fg-3); margin-bottom: 12px; }
+  .empty h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+  .empty p { margin: 0 0 16px; color: var(--fg-2); }
+  .empty .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .has-image .empty { display: none; }
+  .drop-veil { position: fixed; inset: 0; display: none; place-items: center; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(4px); z-index: 10; font-size: 15px; font-weight: 500; }
+  body.dragging.has-image .drop-veil { display: grid; }
+
+  .statusbar { height: 44px; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-top: 1px solid var(--line); background: var(--panel); color: var(--fg-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .statusbar .hint { margin-left: auto; }
+  kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--fg-2); }
+
+  @media (max-width: 820px) {
+    body { grid-template-rows: 56px auto; height: auto; }
+    .app { grid-template-columns: 1fr; }
+    main { order: -1; min-height: 60vh; }
+    aside { border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+    .canvas-wrap { padding: 16px; }
+    .canvas-wrap.fit canvas { max-height: 70vh; }
+    .brand small, .statusbar .hint, .hide-sm { display: none; }
+    .top { gap: 8px; padding: 0 12px; }
+  }
 </style>
 </head>
 <body>
-<header><h1>FILTRO EGA DITHER</h1></header>
-<main>
-  <section>
-    <div id="drop">Arraste uma foto aqui<br>ou clique para escolher<input id="file" type="file" accept="image/*" hidden></div>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span>EGA Dither <small>filtro retrô para fotos</small></div>
+  <div class="spacer"></div>
+  <button class="btn" id="open" title="Abrir foto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><span class="hide-sm">Abrir</span>
+  </button>
+  <button class="btn icon-only" id="compare" title="Segure para ver o original (C)" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg>
+  </button>
+  <button class="btn icon-only" id="zoom" title="Alternar ajustar / tamanho real (Z)" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+  <button class="btn primary" id="save" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span class="hide-sm">Baixar</span> PNG
+  </button>
+  <input id="file" type="file" accept="image/*" hidden>
+</header>
 
-    <h2>ESTILO</h2>
-    <label>Paleta<select id="palette">
-      <option value="magenta">Magenta (referência)</option>
-      <option value="cga">CGA 4 cores</option>
-      <option value="ega">EGA 16 cores</option>
-      <option value="gameboy">Game Boy</option>
-      <option value="alpenglow">Alpenglow Neon</option>
-      <option value="gelo">Gelo</option>
-    </select></label>
-    <label>Dither<select id="dither">
-      <option value="checker">Xadrez 2×2</option>
-      <option value="bayer4">Bayer 4×4</option>
-      <option value="halftone">Meio-tom (jornal)</option>
-      <option value="atkinson">Atkinson (Mac clássico)</option>
-      <option value="floyd">Floyd–Steinberg</option>
-      <option value="flat">Sem dither (chapado)</option>
-    </select></label>
-    <label>Pixel<select id="aspect">
-      <option value="alto">Alto 1:2</option>
-      <option value="quadrado">Quadrado 1:1</option>
-      <option value="largo">Largo 2:1</option>
-    </select></label>
+<div class="app">
+  <aside>
+    <details class="section" open>
+      <summary>Paleta</summary>
+      <div class="palettes" id="palettes"></div>
+    </details>
 
-    <h2>COR</h2>
-    <label>Colunas (grão) <span id="v-cols"></span><input id="cols" type="range" min="80" max="640" step="8" value="320"></label>
-    <label>Ampliação <span id="v-scale"></span><input id="scale" type="range" min="1" max="6" step="1" value="3"></label>
-    <label>Grade da paleta <span id="v-grade"></span><input id="grade" type="range" min="0" max="1" step="0.05" value="0.85"></label>
-    <label>Quente (terra → rampa quente) <span id="v-warm"></span><input id="warm" type="range" min="0" max="2" step="0.05" value="0.6"></label>
-    <label>Contraste <span id="v-contrast"></span><input id="contrast" type="range" min="0.5" max="2" step="0.05" value="1.25"></label>
-    <label>Saturação <span id="v-saturation"></span><input id="saturation" type="range" min="0" max="2.5" step="0.05" value="1.3"></label>
-    <label>Penalidade de mistura <span id="v-spread"></span><input id="spread" type="range" min="0" max="0.6" step="0.02" value="0.2"></label>
-    <label>Suavização <span id="v-smooth"></span><input id="smooth" type="range" min="0" max="3" step="1" value="1"></label>
+    <details class="section" open>
+      <summary>Estilo</summary>
+      <div class="field">
+        <span class="field-label">Dither</span>
+        <div class="seg c2" id="dither"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Formato do pixel</span>
+        <div class="seg c3" id="aspect"></div>
+      </div>
+    </details>
 
-    <h2>EFEITOS</h2>
-    <label>Contorno <span id="v-outline"></span><input id="outline" type="range" min="0" max="1" step="0.05" value="0"></label>
-    <label>Glitch de linhas <span id="v-glitch"></span><input id="glitch" type="range" min="0" max="1" step="0.05" value="0"></label>
-    <label>Scanlines CRT <span id="v-scanlines"></span><input id="scanlines" type="range" min="0" max="1" step="0.05" value="0"></label>
-    <label>Aberração cromática <span id="v-chroma"></span><input id="chroma" type="range" min="0" max="8" step="1" value="0"></label>
-    <label>Vinheta <span id="v-vignette"></span><input id="vignette" type="range" min="0" max="1" step="0.05" value="0"></label>
-    <label>Grão de filme <span id="v-grain"></span><input id="grain" type="range" min="0" max="1" step="0.05" value="0"></label>
+    <details class="section" open>
+      <summary>Imagem</summary>
+      <div id="s-image"></div>
+    </details>
 
-    <button id="save" disabled>Baixar PNG</button>
-    <button id="reset" class="ghost">Restaurar padrão</button>
-    <p id="status"></p>
-    <p class="hint">Tudo roda no seu navegador; a foto não sai do computador.</p>
-  </section>
-  <section id="view"><canvas id="out" width="640" height="400"></canvas></section>
-</main>
+    <details class="section" open>
+      <summary>Efeitos</summary>
+      <div id="s-fx"></div>
+    </details>
+
+    <div class="side-foot">
+      <button class="link" id="reset">Restaurar padrão</button>
+      <span>Duplo clique zera um controle</span>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="canvas-wrap fit" id="wrap">
+      <div class="stack" id="stack">
+        <canvas id="out" width="0" height="0" aria-label="Imagem filtrada"></canvas>
+        <img id="origImg" alt="">
+        <span class="badge">Original</span>
+      </div>
+      <div class="empty" id="empty" role="button" tabindex="0">
+        <div class="inner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></svg>
+          <h2>Arraste uma foto aqui</h2>
+          <p>Ou escolha um arquivo. A imagem é processada no seu navegador e não é enviada para lugar nenhum.</p>
+          <div class="actions">
+            <button class="btn primary" id="pick">Escolher foto</button>
+            <button class="btn" id="sample">Usar exemplo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span id="status">Nenhuma imagem</span>
+      <span class="hint"><kbd>C</kbd> comparar · <kbd>Z</kbd> zoom · <kbd>⌘S</kbd> baixar</span>
+    </div>
+  </main>
+</div>
+<div class="drop-veil">Solte para trocar a foto</div>
+
 <script>
+/* ---------- dados ---------- */
 const hex = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
 const st = a => a.map(([s,c]) => [s,hex(c)]);
 const PRESETS = {
-  magenta: { pal:["#000000","#ffffff","#2018f0","#9a00b8","#ff10ff","#ffff48","#ff8a30","#d82018","#5a0a3a"],
+  magenta: { name:"Magenta", pal:["#000000","#ffffff","#2018f0","#9a00b8","#ff10ff","#ffff48","#ff8a30","#d82018","#5a0a3a"],
     cool:[[0,"#000000"],[.18,"#2018f0"],[.36,"#9a00b8"],[.58,"#ff10ff"],[.80,"#ffa0ff"],[.95,"#ffffff"]],
     warm:[[0,"#000000"],[.20,"#5a0a3a"],[.40,"#d82018"],[.62,"#ff8a30"],[.82,"#ffff48"],[.97,"#ffffff"]], grade:.85 },
-  cga: { pal:["#000000","#55ffff","#ff55ff","#ffffff"],
+  cga: { name:"CGA", pal:["#000000","#55ffff","#ff55ff","#ffffff"],
     cool:[[0,"#000000"],[.40,"#55ffff"],[.95,"#ffffff"]], warm:[[0,"#000000"],[.45,"#ff55ff"],[.95,"#ffffff"]], grade:.9 },
-  ega: { pal:["#000000","#0000aa","#00aa00","#00aaaa","#aa0000","#aa00aa","#aa5500","#aaaaaa","#555555","#5555ff","#55ff55","#55ffff","#ff5555","#ff55ff","#ffff55","#ffffff"],
+  ega: { name:"EGA 16", pal:["#000000","#0000aa","#00aa00","#00aaaa","#aa0000","#aa00aa","#aa5500","#aaaaaa","#555555","#5555ff","#55ff55","#55ffff","#ff5555","#ff55ff","#ffff55","#ffffff"],
     cool:[[0,"#000000"],[.25,"#0000aa"],[.50,"#5555ff"],[.75,"#55ffff"],[.95,"#ffffff"]],
     warm:[[0,"#000000"],[.25,"#aa0000"],[.45,"#aa5500"],[.70,"#ffff55"],[.95,"#ffffff"]], grade:.3 },
-  gameboy: { pal:["#0f380f","#306230","#8bac0f","#c4d86a"],
+  gameboy: { name:"Game Boy", pal:["#0f380f","#306230","#8bac0f","#c4d86a"],
     cool:[[0,"#0f380f"],[.35,"#306230"],[.70,"#8bac0f"],[1,"#c4d86a"]], warm:[[0,"#0f380f"],[.35,"#306230"],[.70,"#8bac0f"],[1,"#c4d86a"]], grade:1 },
-  alpenglow: { pal:["#002732","#044a87","#027ae0","#3595f6","#6b8dee","#af83e9","#d37c92","#e28868","#e39e64","#f4d3b0"],
+  alpenglow: { name:"Alpenglow", pal:["#002732","#044a87","#027ae0","#3595f6","#6b8dee","#af83e9","#d37c92","#e28868","#e39e64","#f4d3b0"],
     cool:[[0,"#002732"],[.22,"#044a87"],[.42,"#027ae0"],[.60,"#3595f6"],[.78,"#6b8dee"],[.95,"#af83e9"]],
     warm:[[0,"#002732"],[.25,"#044a87"],[.50,"#d37c92"],[.70,"#e28868"],[.85,"#e39e64"],[1,"#f4d3b0"]], grade:.9 },
-  gelo: { pal:["#05051a","#102060","#2060ff","#60e0ff","#c8b8ff","#ffffff"],
+  gelo: { name:"Gelo", pal:["#05051a","#102060","#2060ff","#60e0ff","#c8b8ff","#ffffff"],
     cool:[[0,"#05051a"],[.25,"#102060"],[.50,"#2060ff"],[.72,"#60e0ff"],[.95,"#ffffff"]],
     warm:[[0,"#05051a"],[.30,"#102060"],[.60,"#c8b8ff"],[.95,"#ffffff"]], grade:.9 },
 };
+const SWATCH = Object.fromEntries(Object.entries(PRESETS).map(([k,p]) => [k, p.pal.slice()]));
 for (const p of Object.values(PRESETS)) { p.pal=p.pal.map(hex); p.cool=st(p.cool); p.warm=st(p.warm); }
-const ASPECTS = { alto:[1,2], quadrado:[1,1], largo:[2,1] };
+
+const DITHERS = [["checker","Xadrez 2×2"],["bayer4","Bayer 4×4"],["halftone","Meio-tom"],["atkinson","Atkinson"],["floyd","Floyd–Steinberg"],["flat","Sem dither"]];
+const ASPECTS = { alto:[1,2,"Alto 1:2"], quadrado:[1,1,"Quadrado"], largo:[2,1,"Largo 2:1"] };
+const SLIDERS = {
+  "s-image": [
+    ["cols","Resolução (colunas)",80,640,8,320],
+    ["scale","Ampliação",1,6,1,3,"×"],
+    ["grade","Força da paleta",0,1,.05,.85],
+    ["warm","Tons quentes",0,2,.05,.6],
+    ["contrast","Contraste",.5,2,.05,1.25],
+    ["saturation","Saturação",0,2.5,.05,1.3],
+    ["spread","Penalidade de mistura",0,.6,.02,.2],
+    ["smooth","Suavização",0,3,1,1],
+  ],
+  "s-fx": [
+    ["outline","Contorno",0,1,.05,0],
+    ["glitch","Glitch de linhas",0,1,.05,0],
+    ["scanlines","Scanlines",0,1,.05,0],
+    ["chroma","Aberração cromática",0,8,1,0," px"],
+    ["vignette","Vinheta",0,1,.05,0],
+    ["grain","Grão",0,1,.05,0],
+  ],
+};
+
+/* ---------- montagem da interface ---------- */
+const $ = id => document.getElementById(id);
+const palBox = $("palettes");
+for (const [k,p] of Object.entries(PRESETS)) {
+  palBox.insertAdjacentHTML("beforeend",
+    `<label class="pal"><input type="radio" name="palette" value="${k}" ${k==="magenta"?"checked":""}>
+      <span class="card"><span class="strip">${SWATCH[k].map(c=>`<i style="background:${c}"></i>`).join("")}</span>
+      <span class="name">${p.name}</span></span></label>`);
+}
+const seg = (box, name, items, def) => { for (const [v,l] of items)
+  $(box).insertAdjacentHTML("beforeend", `<label><input type="radio" name="${name}" value="${v}" ${v===def?"checked":""}><span>${l}</span></label>`); };
+seg("dither","dither",DITHERS,"checker");
+seg("aspect","aspect",Object.entries(ASPECTS).map(([k,a])=>[k,a[2]]),"alto");
+
+const sliderIds=[], defaults={};
+for (const [box,list] of Object.entries(SLIDERS)) for (const [id,label,min,max,step,val,unit=""] of list) {
+  sliderIds.push(id); defaults[id]=val;
+  $(box).insertAdjacentHTML("beforeend",
+    `<div class="slider" id="row-${id}"><div class="row"><span>${label}</span><output id="v-${id}" data-unit="${unit}"></output></div>
+     <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" aria-label="${label}"></div>`);
+}
+const radio = name => document.querySelector(`input[name=${name}]:checked`).value;
+const setRadio = (name,v) => { document.querySelector(`input[name=${name}][value="${v}"]`).checked = true; };
+
+function paintSlider(id){
+  const el=$(id), p=(el.value-el.min)/(el.max-el.min)*100;
+  el.style.setProperty("--p", p+"%");
+  const o=$("v-"+id), v=parseFloat(el.value);
+  o.textContent=(Number.isInteger(+el.step)?v:v.toFixed(2))+o.dataset.unit;
+  $("row-"+id).classList.toggle("changed", v!==defaults[id]);
+}
+
+/* ---------- processamento ---------- */
 const W = [.30,.59,.11].map(Math.sqrt);
 const HALFTONE4 = [[12,5,6,13],[4,0,1,7],[11,3,2,8],[15,10,9,14]].map(r=>r.map(v=>(v+.5)/16));
 function bayer(n){
   let m=[[0]];
   while (m.length<n){ const s=m.length, o=[];
-    for (let y=0;y<2*s;y++){ o.push([]); for (let x=0;x<2*s;x++){ const b=4*m[y%s][x%s];
-      o[y].push(b+[[0,2],[3,1]][y<s?0:1][x<s?0:1]); } } m=o; }
+    for (let y=0;y<2*s;y++){ o.push([]); for (let x=0;x<2*s;x++)
+      o[y].push(4*m[y%s][x%s]+[[0,2],[3,1]][y<s?0:1][x<s?0:1]); } m=o; }
   return m.map(r=>r.map(v=>(v+.5)/(n*n)));
 }
 const ATKINSON=[[1,0,1/8],[2,0,1/8],[-1,1,1/8],[0,1,1/8],[1,1,1/8],[0,2,1/8]];
 const FLOYD=[[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]];
 function rng(seed){ return () => { seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed);
   t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
-
 function ramp(l, stops){
   if (l <= stops[0][0]) return stops[0][1];
-  for (let i=1;i<stops.length;i++){
-    const [x1,c1]=stops[i];
-    if (l <= x1){ const [x0,c0]=stops[i-1], t=(l-x0)/(x1-x0); return [0,1,2].map(k=>c0[k]+(c1[k]-c0[k])*t); }
-  }
+  for (let i=1;i<stops.length;i++){ const [x1,c1]=stops[i];
+    if (l <= x1){ const [x0,c0]=stops[i-1], t=(l-x0)/(x1-x0); return [0,1,2].map(k=>c0[k]+(c1[k]-c0[k])*t); } }
   return stops[stops.length-1][1];
 }
 const dist = (a,b) => ((a[0]-b[0])*W[0])**2+((a[1]-b[1])*W[1])**2+((a[2]-b[2])*W[2])**2;
 function nearest(c,pal){ let bi=0,bd=Infinity; for (let i=0;i<pal.length;i++){ const d=dist(c,pal[i]); if(d<bd){bd=d;bi=i;} } return bi; }
-
 function buildMixes(pal, n, spreadPen){
   const m=[], levels=[]; for (let k=0;k<=n*n;k++) levels.push(k/(n*n));
-  for (let i=0;i<pal.length;i++) for (let j=i;j<pal.length;j++)
-    for (const r of (i===j?[0]:levels)){
-      const a=pal[i], b=pal[j], sp=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
-      m.push({i,j,r,c:[0,1,2].map(k=>a[k]*(1-r)+b[k]*r),pen:(spreadPen*sp)**2*.25});
-    }
+  for (let i=0;i<pal.length;i++) for (let j=i;j<pal.length;j++) for (const r of (i===j?[0]:levels)){
+    const a=pal[i], b=pal[j], sp=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+    m.push({i,j,r,c:[0,1,2].map(k=>a[k]*(1-r)+b[k]*r),pen:(spreadPen*sp)**2*.25});
+  }
   return m;
 }
-
 function smoothPass(d,w,h){
   const src=new Float32Array(d);
   for (let y=0;y<h;y++) for (let x=0;x<w;x++) for (let k=0;k<3;k++){
     const vals=[];
     for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++){
-      const yy=Math.min(h-1,Math.max(0,y+dy)), xx=Math.min(w-1,Math.max(0,x+dx));
-      vals.push(src[(yy*w+xx)*4+k]);
-    }
-    vals.sort((a,b)=>a-b);
-    d[(y*w+x)*4+k]=vals[4]*.7+(vals[3]+vals[5])*.15;
+      const yy=Math.min(h-1,Math.max(0,y+dy)), xx=Math.min(w-1,Math.max(0,x+dx)); vals.push(src[(yy*w+xx)*4+k]); }
+    vals.sort((a,b)=>a-b); d[(y*w+x)*4+k]=vals[4]*.7+(vals[3]+vals[5])*.15;
   }
 }
 
-let img=null;
-const $ = id => document.getElementById(id);
-const sliders=["cols","scale","grade","warm","contrast","saturation","spread","smooth","outline","glitch","scanlines","chroma","vignette","grain"];
-const selects=["palette","dither","aspect"];
-const defaults=Object.fromEntries([...sliders,...selects].map(id=>[id,$(id).value]));
-
+let img=null, imgName="foto";
 function render(){
-  sliders.forEach(id => $("v-"+id).textContent=$(id).value);
+  sliderIds.forEach(paintSlider);
   if (!img) return;
   const t0=performance.now();
-  const p=Object.fromEntries(sliders.map(id=>[id,parseFloat($(id).value)]));
-  const pre=PRESETS[$("palette").value], pal=pre.pal, dither=$("dither").value;
-  const [pxw,pxh]=ASPECTS[$("aspect").value];
+  const p=Object.fromEntries(sliderIds.map(id=>[id,parseFloat($(id).value)]));
+  const pre=PRESETS[radio("palette")], pal=pre.pal, dither=radio("dither");
+  const [pxw,pxh]=ASPECTS[radio("aspect")];
   const cols=p.cols, rows=Math.max(1,Math.round(img.height/img.width*cols*pxw/pxh));
   const tmp=document.createElement("canvas"); tmp.width=cols; tmp.height=rows;
-  const tc=tmp.getContext("2d"); tc.imageSmoothingQuality="high";
+  const tc=tmp.getContext("2d", {willReadFrequently:true}); tc.imageSmoothingQuality="high";
   tc.filter=`contrast(${p.contrast}) saturate(${p.saturation})`;
   tc.drawImage(img,0,0,cols,rows);
   const id=tc.getImageData(0,0,cols,rows), d=id.data;
   for (let s=0;s<p.smooth;s++) smoothPass(d,cols,rows);
 
-  // luminância antes do grade, para o contorno
   const lum=new Float32Array(cols*rows);
   for (let i=0;i<cols*rows;i++) lum[i]=(.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2])/255;
-
-  // gradient-map frio/quente
   const g=new Float32Array(cols*rows*3);
   for (let i=0;i<cols*rows;i++){
     const r=d[i*4]/255,gg=d[i*4+1]/255,b=d[i*4+2]/255;
@@ -188,7 +373,6 @@ function render(){
     for (let k=0;k<3;k++){ const m=c1[k]*(1-warm)+c2[k]*warm; g[i*3+k]=Math.min(255,Math.max(0,d[i*4+k]*(1-p.grade)+m*p.grade)); }
   }
 
-  // dither -> índice de paleta
   const idx=new Int32Array(cols*rows);
   if (dither==="checker"||dither==="bayer4"||dither==="halftone"){
     const n=dither==="checker"?2:4, mat=dither==="halftone"?HALFTONE4:bayer(n), mixes=buildMixes(pal,n,p.spread);
@@ -209,16 +393,13 @@ function render(){
     for (let i=0;i<cols*rows;i++) idx[i]=nearest([g[i*3],g[i*3+1],g[i*3+2]],pal);
   }
 
-  // contorno
   if (p.outline>0){
-    let darkest=0; pal.forEach((c,i)=>{ if (.299*c[0]+.587*c[1]+.114*c[2] < .299*pal[darkest][0]+.587*pal[darkest][1]+.114*pal[darkest][2]) darkest=i; });
+    const L=c=>.299*c[0]+.587*c[1]+.114*c[2];
+    let darkest=0; pal.forEach((c,i)=>{ if (L(c)<L(pal[darkest])) darkest=i; });
     const thr=.55-.45*p.outline;
     for (let y=1;y<rows-1;y++) for (let x=1;x<cols-1;x++){
-      const i=y*cols+x, gx=lum[i+1]-lum[i-1], gy=lum[i+cols]-lum[i-cols];
-      if (Math.hypot(gx,gy)>thr) idx[i]=darkest;
-    }
+      const i=y*cols+x; if (Math.hypot(lum[i+1]-lum[i-1],lum[i+cols]-lum[i-cols])>thr) idx[i]=darkest; }
   }
-  // glitch: linhas deslocadas e arrastadas
   if (p.glitch>0){
     const R=rng(7), row=new Int32Array(cols);
     for (let y=0;y<rows;y++){
@@ -233,10 +414,9 @@ function render(){
   for (let i=0;i<cols*rows;i++){ const c=pal[idx[i]]; d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
   tc.filter="none"; tc.putImageData(id,0,0);
   const out=$("out"); out.width=cols*p.scale*pxw; out.height=rows*p.scale*pxh;
-  const oc=out.getContext("2d"); oc.imageSmoothingEnabled=false;
+  const oc=out.getContext("2d", {willReadFrequently:true}); oc.imageSmoothingEnabled=false;
   oc.drawImage(tmp,0,0,out.width,out.height);
 
-  // pós-efeitos na imagem ampliada
   if (p.scanlines>0||p.chroma>0||p.vignette>0||p.grain>0){
     const W2=out.width, H2=out.height, od=oc.getImageData(0,0,W2,H2), o=od.data, src=p.chroma?new Uint8ClampedArray(o):null;
     const cell=p.scale*pxh, dark=Math.max(1,Math.floor(cell/3)), R=rng(3), ch=p.chroma;
@@ -247,34 +427,88 @@ function render(){
         if (ch){ o[i]=src[(y*W2+Math.max(0,x-ch))*4]; o[i+2]=src[(y*W2+Math.min(W2-1,x+ch))*4+2]; }
         let f=sl;
         if (p.vignette>0){ const nx=x/W2*2-1, ny=y/H2*2-1; f*=Math.max(0,1-p.vignette*.8*Math.pow(nx*nx+ny*ny,1.5)/2.8); }
-        let n=0; if (p.grain>0){ const u=R()+R()+R()-1.5; n=u*40*p.grain*2; }
+        let n=0; if (p.grain>0){ n=(R()+R()+R()-1.5)*80*p.grain; }
         o[i]=o[i]*f+n; o[i+1]=o[i+1]*f+n; o[i+2]=o[i+2]*f+n;
       }
     }
     oc.putImageData(od,0,0);
   }
-  $("save").disabled=false;
-  $("status").textContent=`${out.width}×${out.height} · ${Math.round(performance.now()-t0)} ms`;
+  $("status").textContent=`${imgName} · ${out.width} × ${out.height} px · ${PRESETS[radio("palette")].name} · ${Math.round(performance.now()-t0)} ms`;
 }
 
+/* ---------- interação ---------- */
 let pending=0;
 const schedule=()=>{ cancelAnimationFrame(pending); pending=requestAnimationFrame(render); };
-sliders.forEach(id=>$(id).addEventListener("input",schedule));
-["dither","aspect"].forEach(id=>$(id).addEventListener("change",schedule));
-$("palette").addEventListener("change",()=>{ $("grade").value=PRESETS[$("palette").value].grade; schedule(); });
-$("reset").onclick=()=>{ for (const [id,v] of Object.entries(defaults)) $(id).value=v; schedule(); };
+document.querySelector("aside").addEventListener("input", e=>{
+  if (e.target.name==="palette") $("grade").value=PRESETS[e.target.value].grade;
+  schedule();
+});
+document.querySelector("aside").addEventListener("dblclick", e=>{
+  if (e.target.type==="range"){ e.target.value=defaults[e.target.id]; schedule(); }
+});
+$("reset").onclick=()=>{
+  for (const id of sliderIds) $(id).value=defaults[id];
+  setRadio("palette","magenta"); setRadio("dither","checker"); setRadio("aspect","alto"); schedule();
+};
 
-function load(file){
-  if (!file || !file.type.startsWith("image/")) return;
-  const im=new Image(); im.onload=()=>{ img=im; render(); }; im.src=URL.createObjectURL(file);
+function setImage(src, name){
+  const im=new Image();
+  im.onload=()=>{ img=im; imgName=name; $("origImg").src=src; document.body.classList.add("has-image");
+    ["save","compare","zoom"].forEach(i=>$(i).disabled=false); render(); };
+  im.src=src;
 }
-const drop=$("drop");
-drop.onclick=()=>$("file").click();
-$("file").onchange=e=>load(e.target.files[0]);
-["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
-["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
-drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
-$("save").onclick=()=>{ const a=document.createElement("a"); a.download="ega-dither.png"; a.href=$("out").toDataURL("image/png"); a.click(); };
+function load(file){ if (file && file.type.startsWith("image/")) setImage(URL.createObjectURL(file), file.name.replace(/\.[^.]+$/,"")); }
+
+// imagem de exemplo gerada aqui mesmo: céu, sol baixo, montanhas em camadas e água
+function sampleImage(){
+  const c=document.createElement("canvas"); c.width=960; c.height=600; const x=c.getContext("2d"), R=rng(11);
+  let g=x.createLinearGradient(0,0,0,360); g.addColorStop(0,"#3b5fa8"); g.addColorStop(.6,"#e8a07a"); g.addColorStop(1,"#f6d2a0");
+  x.fillStyle=g; x.fillRect(0,0,960,600);
+  x.fillStyle="rgba(255,240,220,.9)"; x.beginPath(); x.arc(700,300,46,0,7); x.fill();
+  for (let k=0;k<5;k++){ x.fillStyle=`rgba(255,255,255,${.25+.1*k})`; x.beginPath(); x.ellipse(120+k*190,80+R()*90,90+R()*60,14,0,0,7); x.fill(); }
+  const layers=[["#8a6f9a",300,90],["#5d4a73",360,120],["#7a3f2c",420,160],["#3a2232",480,140]];
+  for (const [col,base,amp] of layers){
+    x.fillStyle=col; x.beginPath(); x.moveTo(0,600); let y=base;
+    for (let px=0;px<=960;px+=12){ y=base-amp*Math.abs(Math.sin(px/170+base))*(.6+R()*.4); x.lineTo(px,y); }
+    x.lineTo(960,600); x.fill();
+  }
+  g=x.createLinearGradient(0,520,0,600); g.addColorStop(0,"#d98a5e"); g.addColorStop(1,"#2a1a30");
+  x.fillStyle=g; x.fillRect(0,520,960,80);
+  return c.toDataURL("image/png");
+}
+
+$("open").onclick=$("pick").onclick=()=>$("file").click();
+$("empty").onclick=e=>{ if (e.target===e.currentTarget||e.target.closest(".inner")&&!e.target.closest("button")) $("file").click(); };
+$("empty").onkeydown=e=>{ if (e.key==="Enter"||e.key===" "){ e.preventDefault(); $("file").click(); } };
+$("sample").onclick=e=>{ e.stopPropagation(); setImage(sampleImage(),"exemplo"); };
+$("file").onchange=e=>{ load(e.target.files[0]); e.target.value=""; };
+
+let depth=0;
+addEventListener("dragenter",e=>{ e.preventDefault(); depth++; document.body.classList.add("dragging"); });
+addEventListener("dragleave",()=>{ if (--depth<=0){ depth=0; document.body.classList.remove("dragging"); } });
+addEventListener("dragover",e=>e.preventDefault());
+addEventListener("drop",e=>{ e.preventDefault(); depth=0; document.body.classList.remove("dragging"); load(e.dataTransfer.files[0]); });
+addEventListener("paste",e=>{ const f=[...e.clipboardData.files][0]; if (f) load(f); });
+
+const cmp=on=>{ if (img) $("main").classList.toggle("comparing",on); };
+const cb=$("compare");
+cb.addEventListener("pointerdown",()=>cmp(true));
+["pointerup","pointerleave"].forEach(ev=>cb.addEventListener(ev,()=>cmp(false)));
+$("zoom").onclick=()=>$("wrap").classList.toggle("fit");
+
+function save(){
+  if (!img) return;
+  const a=document.createElement("a"); a.download=`${imgName}-${radio("palette")}.png`; a.href=$("out").toDataURL("image/png"); a.click();
+}
+$("save").onclick=save;
+addEventListener("keydown",e=>{
+  if ((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="s"){ e.preventDefault(); save(); return; }
+  if (e.target.matches("input[type=range]")||e.metaKey||e.ctrlKey||e.altKey) return;
+  if (e.key==="c"&&!e.repeat) cmp(true);
+  if (e.key==="z") $("zoom").click();
+});
+addEventListener("keyup",e=>{ if (e.key==="c") cmp(false); });
+
 render();
 </script>
 </body>
