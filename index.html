@@ -10,18 +10,22 @@
   body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 ui-monospace,Menlo,monospace; }
   header { padding:16px; border-bottom:2px solid var(--muted); }
   h1 { margin:0; font-size:18px; color:var(--accent); letter-spacing:2px; }
-  main { display:grid; grid-template-columns:280px 1fr; gap:16px; padding:16px; }
+  main { display:grid; grid-template-columns:300px 1fr; gap:16px; padding:16px; }
   @media (max-width:760px){ main{ grid-template-columns:1fr; } }
   #drop { border:2px dashed var(--muted); padding:24px 12px; text-align:center; cursor:pointer; }
   #drop.over { border-color:var(--accent); background:#2a0030; }
-  label { display:block; margin-top:12px; }
+  h2 { font-size:12px; letter-spacing:2px; color:var(--accent); margin:20px 0 0; border-top:1px solid var(--muted); padding-top:10px; }
+  label { display:block; margin-top:10px; }
   label span { float:right; color:#fff; }
   input[type=range] { width:100%; accent-color:var(--accent); }
+  select { width:100%; margin-top:4px; background:#2a0030; color:#fff; border:1px solid var(--muted); font:inherit; padding:4px; }
   button { margin-top:16px; width:100%; padding:10px; background:var(--accent); color:#000; border:0; font:inherit; font-weight:bold; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--fg); border:1px solid var(--muted); margin-top:8px; }
   button:disabled { opacity:.4; cursor:default; }
   #view { overflow:auto; min-height:300px; display:flex; align-items:flex-start; justify-content:center; }
   canvas { image-rendering:pixelated; max-width:100%; height:auto; }
   .hint { color:#b080c0; font-size:12px; margin-top:8px; }
+  #status { color:#b080c0; font-size:12px; min-height:1.4em; }
 </style>
 </head>
 <body>
@@ -29,26 +33,91 @@
 <main>
   <section>
     <div id="drop">Arraste uma foto aqui<br>ou clique para escolher<input id="file" type="file" accept="image/*" hidden></div>
-    <label>Colunas (grão) <span id="v-cols"></span><input id="cols" type="range" min="120" max="640" step="8" value="320"></label>
+
+    <h2>ESTILO</h2>
+    <label>Paleta<select id="palette">
+      <option value="magenta">Magenta (referência)</option>
+      <option value="cga">CGA 4 cores</option>
+      <option value="ega">EGA 16 cores</option>
+      <option value="gameboy">Game Boy</option>
+      <option value="alpenglow">Alpenglow Neon</option>
+      <option value="gelo">Gelo</option>
+    </select></label>
+    <label>Dither<select id="dither">
+      <option value="checker">Xadrez 2×2</option>
+      <option value="bayer4">Bayer 4×4</option>
+      <option value="halftone">Meio-tom (jornal)</option>
+      <option value="atkinson">Atkinson (Mac clássico)</option>
+      <option value="floyd">Floyd–Steinberg</option>
+      <option value="flat">Sem dither (chapado)</option>
+    </select></label>
+    <label>Pixel<select id="aspect">
+      <option value="alto">Alto 1:2</option>
+      <option value="quadrado">Quadrado 1:1</option>
+      <option value="largo">Largo 2:1</option>
+    </select></label>
+
+    <h2>COR</h2>
+    <label>Colunas (grão) <span id="v-cols"></span><input id="cols" type="range" min="80" max="640" step="8" value="320"></label>
     <label>Ampliação <span id="v-scale"></span><input id="scale" type="range" min="1" max="6" step="1" value="3"></label>
-    <label>Grade magenta <span id="v-grade"></span><input id="grade" type="range" min="0" max="1" step="0.05" value="0.85"></label>
-    <label>Quente (terra → laranja) <span id="v-warm"></span><input id="warm" type="range" min="0" max="2" step="0.05" value="0.6"></label>
+    <label>Grade da paleta <span id="v-grade"></span><input id="grade" type="range" min="0" max="1" step="0.05" value="0.85"></label>
+    <label>Quente (terra → rampa quente) <span id="v-warm"></span><input id="warm" type="range" min="0" max="2" step="0.05" value="0.6"></label>
     <label>Contraste <span id="v-contrast"></span><input id="contrast" type="range" min="0.5" max="2" step="0.05" value="1.25"></label>
     <label>Saturação <span id="v-saturation"></span><input id="saturation" type="range" min="0" max="2.5" step="0.05" value="1.3"></label>
     <label>Penalidade de mistura <span id="v-spread"></span><input id="spread" type="range" min="0" max="0.6" step="0.02" value="0.2"></label>
     <label>Suavização <span id="v-smooth"></span><input id="smooth" type="range" min="0" max="3" step="1" value="1"></label>
+
+    <h2>EFEITOS</h2>
+    <label>Contorno <span id="v-outline"></span><input id="outline" type="range" min="0" max="1" step="0.05" value="0"></label>
+    <label>Glitch de linhas <span id="v-glitch"></span><input id="glitch" type="range" min="0" max="1" step="0.05" value="0"></label>
+    <label>Scanlines CRT <span id="v-scanlines"></span><input id="scanlines" type="range" min="0" max="1" step="0.05" value="0"></label>
+    <label>Aberração cromática <span id="v-chroma"></span><input id="chroma" type="range" min="0" max="8" step="1" value="0"></label>
+    <label>Vinheta <span id="v-vignette"></span><input id="vignette" type="range" min="0" max="1" step="0.05" value="0"></label>
+    <label>Grão de filme <span id="v-grain"></span><input id="grain" type="range" min="0" max="1" step="0.05" value="0"></label>
+
     <button id="save" disabled>Baixar PNG</button>
+    <button id="reset" class="ghost">Restaurar padrão</button>
+    <p id="status"></p>
     <p class="hint">Tudo roda no seu navegador; a foto não sai do computador.</p>
   </section>
   <section id="view"><canvas id="out" width="640" height="400"></canvas></section>
 </main>
 <script>
 const hex = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
-const PAL = ["#000000","#ffffff","#2018f0","#9a00b8","#ff10ff","#ffff48","#ff8a30","#d82018","#5a0a3a"].map(hex);
-const COOL = [[0,"#000000"],[.18,"#2018f0"],[.36,"#9a00b8"],[.58,"#ff10ff"],[.80,"#ffa0ff"],[.95,"#ffffff"]].map(([s,c])=>[s,hex(c)]);
-const WARM = [[0,"#000000"],[.20,"#5a0a3a"],[.40,"#d82018"],[.62,"#ff8a30"],[.82,"#ffff48"],[.97,"#ffffff"]].map(([s,c])=>[s,hex(c)]);
-const BAYER = [[0,2],[3,1]].map(r => r.map(v => v/4 + .125));
+const st = a => a.map(([s,c]) => [s,hex(c)]);
+const PRESETS = {
+  magenta: { pal:["#000000","#ffffff","#2018f0","#9a00b8","#ff10ff","#ffff48","#ff8a30","#d82018","#5a0a3a"],
+    cool:[[0,"#000000"],[.18,"#2018f0"],[.36,"#9a00b8"],[.58,"#ff10ff"],[.80,"#ffa0ff"],[.95,"#ffffff"]],
+    warm:[[0,"#000000"],[.20,"#5a0a3a"],[.40,"#d82018"],[.62,"#ff8a30"],[.82,"#ffff48"],[.97,"#ffffff"]], grade:.85 },
+  cga: { pal:["#000000","#55ffff","#ff55ff","#ffffff"],
+    cool:[[0,"#000000"],[.40,"#55ffff"],[.95,"#ffffff"]], warm:[[0,"#000000"],[.45,"#ff55ff"],[.95,"#ffffff"]], grade:.9 },
+  ega: { pal:["#000000","#0000aa","#00aa00","#00aaaa","#aa0000","#aa00aa","#aa5500","#aaaaaa","#555555","#5555ff","#55ff55","#55ffff","#ff5555","#ff55ff","#ffff55","#ffffff"],
+    cool:[[0,"#000000"],[.25,"#0000aa"],[.50,"#5555ff"],[.75,"#55ffff"],[.95,"#ffffff"]],
+    warm:[[0,"#000000"],[.25,"#aa0000"],[.45,"#aa5500"],[.70,"#ffff55"],[.95,"#ffffff"]], grade:.3 },
+  gameboy: { pal:["#0f380f","#306230","#8bac0f","#c4d86a"],
+    cool:[[0,"#0f380f"],[.35,"#306230"],[.70,"#8bac0f"],[1,"#c4d86a"]], warm:[[0,"#0f380f"],[.35,"#306230"],[.70,"#8bac0f"],[1,"#c4d86a"]], grade:1 },
+  alpenglow: { pal:["#002732","#044a87","#027ae0","#3595f6","#6b8dee","#af83e9","#d37c92","#e28868","#e39e64","#f4d3b0"],
+    cool:[[0,"#002732"],[.22,"#044a87"],[.42,"#027ae0"],[.60,"#3595f6"],[.78,"#6b8dee"],[.95,"#af83e9"]],
+    warm:[[0,"#002732"],[.25,"#044a87"],[.50,"#d37c92"],[.70,"#e28868"],[.85,"#e39e64"],[1,"#f4d3b0"]], grade:.9 },
+  gelo: { pal:["#05051a","#102060","#2060ff","#60e0ff","#c8b8ff","#ffffff"],
+    cool:[[0,"#05051a"],[.25,"#102060"],[.50,"#2060ff"],[.72,"#60e0ff"],[.95,"#ffffff"]],
+    warm:[[0,"#05051a"],[.30,"#102060"],[.60,"#c8b8ff"],[.95,"#ffffff"]], grade:.9 },
+};
+for (const p of Object.values(PRESETS)) { p.pal=p.pal.map(hex); p.cool=st(p.cool); p.warm=st(p.warm); }
+const ASPECTS = { alto:[1,2], quadrado:[1,1], largo:[2,1] };
 const W = [.30,.59,.11].map(Math.sqrt);
+const HALFTONE4 = [[12,5,6,13],[4,0,1,7],[11,3,2,8],[15,10,9,14]].map(r=>r.map(v=>(v+.5)/16));
+function bayer(n){
+  let m=[[0]];
+  while (m.length<n){ const s=m.length, o=[];
+    for (let y=0;y<2*s;y++){ o.push([]); for (let x=0;x<2*s;x++){ const b=4*m[y%s][x%s];
+      o[y].push(b+[[0,2],[3,1]][y<s?0:1][x<s?0:1]); } } m=o; }
+  return m.map(r=>r.map(v=>(v+.5)/(n*n)));
+}
+const ATKINSON=[[1,0,1/8],[2,0,1/8],[-1,1,1/8],[0,1,1/8],[1,1,1/8],[0,2,1/8]];
+const FLOYD=[[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]];
+function rng(seed){ return () => { seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed);
+  t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
 function ramp(l, stops){
   if (l <= stops[0][0]) return stops[0][1];
@@ -58,22 +127,21 @@ function ramp(l, stops){
   }
   return stops[stops.length-1][1];
 }
+const dist = (a,b) => ((a[0]-b[0])*W[0])**2+((a[1]-b[1])*W[1])**2+((a[2]-b[2])*W[2])**2;
+function nearest(c,pal){ let bi=0,bd=Infinity; for (let i=0;i<pal.length;i++){ const d=dist(c,pal[i]); if(d<bd){bd=d;bi=i;} } return bi; }
 
-function buildMixes(spreadPen){
-  const m=[];
-  for (let i=0;i<PAL.length;i++) for (let j=i;j<PAL.length;j++)
-    for (const r of [0,.25,.5,.75,1]){
-      if (i===j && r!==0) continue;
-      const a=PAL[i], b=PAL[j];
-      const sp=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+function buildMixes(pal, n, spreadPen){
+  const m=[], levels=[]; for (let k=0;k<=n*n;k++) levels.push(k/(n*n));
+  for (let i=0;i<pal.length;i++) for (let j=i;j<pal.length;j++)
+    for (const r of (i===j?[0]:levels)){
+      const a=pal[i], b=pal[j], sp=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
       m.push({i,j,r,c:[0,1,2].map(k=>a[k]*(1-r)+b[k]*r),pen:(spreadPen*sp)**2*.25});
     }
   return m;
 }
 
-// filtros de suavização no canvas reduzido: moda 3x3 aproximada por mediana + blur leve
 function smoothPass(d,w,h){
-  const src=new Float32Array(d), out=d;
+  const src=new Float32Array(d);
   for (let y=0;y<h;y++) for (let x=0;x<w;x++) for (let k=0;k<3;k++){
     const vals=[];
     for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++){
@@ -81,51 +149,120 @@ function smoothPass(d,w,h){
       vals.push(src[(yy*w+xx)*4+k]);
     }
     vals.sort((a,b)=>a-b);
-    out[(y*w+x)*4+k]=vals[4]*.7+(vals[3]+vals[5])*.15;
+    d[(y*w+x)*4+k]=vals[4]*.7+(vals[3]+vals[5])*.15;
   }
 }
 
 let img=null;
 const $ = id => document.getElementById(id);
-const ids=["cols","scale","grade","warm","contrast","saturation","spread","smooth"];
+const sliders=["cols","scale","grade","warm","contrast","saturation","spread","smooth","outline","glitch","scanlines","chroma","vignette","grain"];
+const selects=["palette","dither","aspect"];
+const defaults=Object.fromEntries([...sliders,...selects].map(id=>[id,$(id).value]));
 
 function render(){
-  ids.forEach(id => $("v-"+id).textContent=$(id).value);
+  sliders.forEach(id => $("v-"+id).textContent=$(id).value);
   if (!img) return;
-  const p=Object.fromEntries(ids.map(id=>[id,parseFloat($(id).value)]));
-  const cols=p.cols, rows=Math.max(1,Math.round(img.height/img.width*cols/2));
+  const t0=performance.now();
+  const p=Object.fromEntries(sliders.map(id=>[id,parseFloat($(id).value)]));
+  const pre=PRESETS[$("palette").value], pal=pre.pal, dither=$("dither").value;
+  const [pxw,pxh]=ASPECTS[$("aspect").value];
+  const cols=p.cols, rows=Math.max(1,Math.round(img.height/img.width*cols*pxw/pxh));
   const tmp=document.createElement("canvas"); tmp.width=cols; tmp.height=rows;
   const tc=tmp.getContext("2d"); tc.imageSmoothingQuality="high";
   tc.filter=`contrast(${p.contrast}) saturate(${p.saturation})`;
   tc.drawImage(img,0,0,cols,rows);
   const id=tc.getImageData(0,0,cols,rows), d=id.data;
   for (let s=0;s<p.smooth;s++) smoothPass(d,cols,rows);
-  const mixes=buildMixes(p.spread);
-  for (let y=0;y<rows;y++) for (let x=0;x<cols;x++){
-    const o=(y*cols+x)*4;
-    const r=d[o]/255,g=d[o+1]/255,b=d[o+2]/255;
-    const lum=.299*r+.587*g+.114*b, mx=Math.max(r,g,b), mn=Math.min(r,g,b), sat=(mx-mn)/(mx+1e-6);
-    const warm=Math.min(1,Math.max(0,((r-b)*2.2+(g-b)*.6)*(.4+sat)*p.warm));
-    const c1=ramp(lum,COOL), c2=ramp(lum,WARM);
-    const t=[0,1,2].map(k=>{ const m=c1[k]*(1-warm)+c2[k]*warm; return d[o+k]*(1-p.grade)+m*p.grade; });
-    let best=null,bd=Infinity;
-    for (const m of mixes){
-      const e=((t[0]-m.c[0])*W[0])**2+((t[1]-m.c[1])*W[1])**2+((t[2]-m.c[2])*W[2])**2+m.pen;
-      if (e<bd){bd=e;best=m;}
-    }
-    const c=PAL[BAYER[y%2][x%2]<best.r?best.j:best.i];
-    d[o]=c[0]; d[o+1]=c[1]; d[o+2]=c[2]; d[o+3]=255;
+
+  // luminância antes do grade, para o contorno
+  const lum=new Float32Array(cols*rows);
+  for (let i=0;i<cols*rows;i++) lum[i]=(.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2])/255;
+
+  // gradient-map frio/quente
+  const g=new Float32Array(cols*rows*3);
+  for (let i=0;i<cols*rows;i++){
+    const r=d[i*4]/255,gg=d[i*4+1]/255,b=d[i*4+2]/255;
+    const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b), sat=(mx-mn)/(mx+1e-6);
+    const warm=Math.min(1,Math.max(0,((r-b)*2.2+(gg-b)*.6)*(.4+sat)*p.warm));
+    const c1=ramp(lum[i],pre.cool), c2=ramp(lum[i],pre.warm);
+    for (let k=0;k<3;k++){ const m=c1[k]*(1-warm)+c2[k]*warm; g[i*3+k]=Math.min(255,Math.max(0,d[i*4+k]*(1-p.grade)+m*p.grade)); }
   }
+
+  // dither -> índice de paleta
+  const idx=new Int32Array(cols*rows);
+  if (dither==="checker"||dither==="bayer4"||dither==="halftone"){
+    const n=dither==="checker"?2:4, mat=dither==="halftone"?HALFTONE4:bayer(n), mixes=buildMixes(pal,n,p.spread);
+    for (let y=0;y<rows;y++) for (let x=0;x<cols;x++){
+      const i=y*cols+x, t=[g[i*3],g[i*3+1],g[i*3+2]];
+      let best=null,bd=Infinity;
+      for (const m of mixes){ const e=dist(t,m.c)+m.pen; if (e<bd){bd=e;best=m;} }
+      idx[i]=mat[y%n][x%n]<best.r?best.j:best.i;
+    }
+  } else if (dither==="atkinson"||dither==="floyd"){
+    const k=dither==="atkinson"?ATKINSON:FLOYD;
+    for (let y=0;y<rows;y++) for (let x=0;x<cols;x++){
+      const i=y*cols+x, c=[g[i*3],g[i*3+1],g[i*3+2]], q=nearest(c,pal); idx[i]=q;
+      for (const [dx,dy,w] of k){ const xx=x+dx, yy=y+dy;
+        if (xx>=0&&xx<cols&&yy<rows){ const o=(yy*cols+xx)*3; for (let c3=0;c3<3;c3++) g[o+c3]+=(c[c3]-pal[q][c3])*w; } }
+    }
+  } else {
+    for (let i=0;i<cols*rows;i++) idx[i]=nearest([g[i*3],g[i*3+1],g[i*3+2]],pal);
+  }
+
+  // contorno
+  if (p.outline>0){
+    let darkest=0; pal.forEach((c,i)=>{ if (.299*c[0]+.587*c[1]+.114*c[2] < .299*pal[darkest][0]+.587*pal[darkest][1]+.114*pal[darkest][2]) darkest=i; });
+    const thr=.55-.45*p.outline;
+    for (let y=1;y<rows-1;y++) for (let x=1;x<cols-1;x++){
+      const i=y*cols+x, gx=lum[i+1]-lum[i-1], gy=lum[i+cols]-lum[i-cols];
+      if (Math.hypot(gx,gy)>thr) idx[i]=darkest;
+    }
+  }
+  // glitch: linhas deslocadas e arrastadas
+  if (p.glitch>0){
+    const R=rng(7), row=new Int32Array(cols);
+    for (let y=0;y<rows;y++){
+      const o=y*cols;
+      if (R()<p.glitch*.12){ const sh=Math.trunc((Math.floor(R()*17)-8)*p.glitch);
+        for (let x=0;x<cols;x++) row[x]=idx[o+(((x-sh)%cols)+cols)%cols]; idx.set(row,o); }
+      if (R()<p.glitch*.08){ const x0=Math.floor(R()*cols), ln=4+Math.floor(R()*(cols*.25*p.glitch+1));
+        for (let x=x0;x<Math.min(cols,x0+ln);x++) idx[o+x]=idx[o+x0]; }
+    }
+  }
+
+  for (let i=0;i<cols*rows;i++){ const c=pal[idx[i]]; d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
   tc.filter="none"; tc.putImageData(id,0,0);
-  const out=$("out"); out.width=cols*p.scale; out.height=rows*p.scale*2;
+  const out=$("out"); out.width=cols*p.scale*pxw; out.height=rows*p.scale*pxh;
   const oc=out.getContext("2d"); oc.imageSmoothingEnabled=false;
   oc.drawImage(tmp,0,0,out.width,out.height);
+
+  // pós-efeitos na imagem ampliada
+  if (p.scanlines>0||p.chroma>0||p.vignette>0||p.grain>0){
+    const W2=out.width, H2=out.height, od=oc.getImageData(0,0,W2,H2), o=od.data, src=p.chroma?new Uint8ClampedArray(o):null;
+    const cell=p.scale*pxh, dark=Math.max(1,Math.floor(cell/3)), R=rng(3), ch=p.chroma;
+    for (let y=0;y<H2;y++){
+      const sl=(p.scanlines>0 && y%cell>=cell-dark)?1-.7*p.scanlines:1;
+      for (let x=0;x<W2;x++){
+        const i=(y*W2+x)*4;
+        if (ch){ o[i]=src[(y*W2+Math.max(0,x-ch))*4]; o[i+2]=src[(y*W2+Math.min(W2-1,x+ch))*4+2]; }
+        let f=sl;
+        if (p.vignette>0){ const nx=x/W2*2-1, ny=y/H2*2-1; f*=Math.max(0,1-p.vignette*.8*Math.pow(nx*nx+ny*ny,1.5)/2.8); }
+        let n=0; if (p.grain>0){ const u=R()+R()+R()-1.5; n=u*40*p.grain*2; }
+        o[i]=o[i]*f+n; o[i+1]=o[i+1]*f+n; o[i+2]=o[i+2]*f+n;
+      }
+    }
+    oc.putImageData(od,0,0);
+  }
   $("save").disabled=false;
+  $("status").textContent=`${out.width}×${out.height} · ${Math.round(performance.now()-t0)} ms`;
 }
 
 let pending=0;
 const schedule=()=>{ cancelAnimationFrame(pending); pending=requestAnimationFrame(render); };
-ids.forEach(id=>$(id).addEventListener("input",schedule));
+sliders.forEach(id=>$(id).addEventListener("input",schedule));
+["dither","aspect"].forEach(id=>$(id).addEventListener("change",schedule));
+$("palette").addEventListener("change",()=>{ $("grade").value=PRESETS[$("palette").value].grade; schedule(); });
+$("reset").onclick=()=>{ for (const [id,v] of Object.entries(defaults)) $(id).value=v; schedule(); };
 
 function load(file){
   if (!file || !file.type.startsWith("image/")) return;

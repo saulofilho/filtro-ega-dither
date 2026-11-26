@@ -28,7 +28,31 @@ python3 -m venv .venv
 .venv/bin/python ega_dither.py foto.jpg saida.png --cols 320 --warm 0.6
 ```
 
-Opções: `--cols` (grão), `--scale`, `--grade` (0 = cores originais, 1 = paleta total),
-`--warm`, `--contrast`, `--saturation`, `--spread` (evita misturar cores distantes), `--smooth`.
+Opções:
 
-A paleta e as rampas ficam no topo de `ega_dither.py` e do `<script>` em `index.html`.
+| Opção | Valores | O que faz |
+|---|---|---|
+| `--palette` | `magenta` `cga` `ega` `gameboy` `alpenglow` `gelo` | conjunto de cores e rampas fria/quente |
+| `--dither` | `checker` `bayer4` `halftone` `atkinson` `floyd` `flat` | xadrez 2×2, trama 4×4, meio-tom de jornal, difusão Atkinson, difusão Floyd–Steinberg, sem dither |
+| `--aspect` | `alto` `quadrado` `largo` | formato do pixel (1:2, 1:1, 2:1) |
+| `--cols` / `--scale` | inteiros | grão e ampliação final |
+| `--grade` | 0–1 | 0 = cores da foto, 1 = só a paleta (padrão vem do preset) |
+| `--warm` | 0–2 | quanto terra/rocha/pele vai para a rampa quente |
+| `--contrast` `--saturation` | números | ajuste antes do filtro |
+| `--spread` | 0–0.6 | evita misturar cores muito distantes |
+| `--smooth` | 0–3 | passadas de suavização em manchas |
+| `--outline` | 0–1 | contorno escuro nas bordas |
+| `--glitch` | 0–1 | linhas deslocadas e arrastadas, como ruído de sinal |
+| `--scanlines` | 0–1 | linhas de monitor CRT |
+| `--chroma` | px | aberração cromática (vermelho e azul separados) |
+| `--vignette` | 0–1 | bordas escurecidas |
+| `--grain` | 0–1 | grão de filme |
+
+Exemplo com tudo:
+
+```
+.venv/bin/python ega_dither.py foto.jpg saida.png --palette alpenglow --dither halftone \
+  --outline 0.5 --glitch 0.4 --scanlines 0.5 --chroma 2 --vignette 0.6 --grain 0.2
+```
+
+Os presets (`PRESETS`) ficam no topo de `ega_dither.py` e do `<script>` em `index.html`; para criar uma paleta nova, adicione nos dois.
