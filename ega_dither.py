@@ -84,6 +84,7 @@ def run(src, dst, cols=320, scale=3, amount=0.85, warm_bias=0.6, contrast=1.25, 
     graded = np.clip(grade(small, amount, warm_bias), 0, 255)
     out = dither(graded, PALETTE, spread).astype(np.uint8)
     Image.fromarray(out).resize((cols * scale, rows * scale * 2), Image.NEAREST).save(dst)
+    print(f"salvo: {dst} ({cols * scale}x{rows * scale * 2})")
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
